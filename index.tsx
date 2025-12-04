@@ -3,8 +3,9 @@ import ReactDOM from 'react-dom/client';
 import App from './App';
 
 const rootElement = document.getElementById('root');
+
 if (!rootElement) {
-  throw new Error("Could not find root element to mount to");
+  console.error("Root element missing!");
 }
 
 interface ErrorBoundaryProps {
@@ -18,11 +19,9 @@ interface ErrorBoundaryState {
 
 // Hata Sınırı (Error Boundary) Bileşeni
 class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
-  // Explicitly declare state to resolve TS errors
-  public state: ErrorBoundaryState = { hasError: false, error: null };
-
   constructor(props: ErrorBoundaryProps) {
     super(props);
+    this.state = { hasError: false, error: null };
   }
 
   static getDerivedStateFromError(error: Error): ErrorBoundaryState {
@@ -44,15 +43,10 @@ class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
           </div>
           <h1 className="text-3xl font-black mb-3 text-slate-900">Bir Sorun Oluştu</h1>
           <p className="text-slate-500 mb-8 max-w-md font-medium leading-relaxed">
-            Uygulama yüklenirken beklenmedik bir hata meydana geldi. Bu durum genellikle geçici bağlantı sorunlarından kaynaklanır.
+            Uygulama yüklenirken beklenmedik bir hata meydana geldi. Sayfayı yenilemeyi deneyin.
           </p>
           <div className="bg-white p-6 rounded-2xl text-xs text-left font-mono text-red-500 mb-8 w-full max-w-lg overflow-auto border border-red-100 shadow-sm max-h-48">
              {this.state.error?.message || "Bilinmeyen Hata"}
-             {this.state.error?.message.includes("process") && (
-                 <div className="mt-2 text-slate-400 border-t border-red-50 pt-2">
-                     İpucu: Bu hata genellikle API anahtarlarının 'process.env' üzerinden okunamamasından kaynaklanır. Kod güncellemeleri yapıldı, lütfen sayfayı yenileyin.
-                 </div>
-             )}
           </div>
           <button 
             onClick={() => window.location.reload()} 
@@ -68,11 +62,18 @@ class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
   }
 }
 
-const root = ReactDOM.createRoot(rootElement);
-root.render(
-  <React.StrictMode>
-    <ErrorBoundary>
-      <App />
-    </ErrorBoundary>
-  </React.StrictMode>
-);
+if (rootElement) {
+    try {
+        const root = ReactDOM.createRoot(rootElement);
+        root.render(
+          <React.StrictMode>
+            <ErrorBoundary>
+              <App />
+            </ErrorBoundary>
+          </React.StrictMode>
+        );
+    } catch (e) {
+        console.error("Root Render Hatası:", e);
+        rootElement.innerHTML = `<div style="padding: 20px; font-family: sans-serif; color: red;"><h3>Kritik Başlangıç Hatası</h3><pre>${e}</pre></div>`;
+    }
+}

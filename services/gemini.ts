@@ -1,26 +1,47 @@
 import { GoogleGenAI, GenerateContentResponse, Chat } from "@google/genai";
 import { Attachment, Message, MessageRole } from "../types";
 
-// API Anahtarını güvenli şekilde alma (Tarayıcı çökmesini engeller)
+// API Anahtarını güvenli şekilde alma
 const getApiKey = () => {
   try {
-    // Vite/Vercel ortamı için
-    const meta = import.meta as any;
-    if (typeof meta !== 'undefined' && meta.env && meta.env.VITE_API_KEY) {
-      return meta.env.VITE_API_KEY;
+    // 1. Vite Environment (Vercel/Local)
+    // @ts-ignore
+    if (import.meta && import.meta.env && import.meta.env.VITE_API_KEY) {
+      // @ts-ignore
+      return import.meta.env.VITE_API_KEY;
     }
-    // Node ortamı veya process tanımlıysa
+    // 2. Process Environment (Node/Fallback)
+    // @ts-ignore
     if (typeof process !== 'undefined' && process.env && process.env.API_KEY) {
+      // @ts-ignore
       return process.env.API_KEY;
     }
   } catch (e) {
-    console.warn("Ortam değişkenleri okunamadı.");
+    console.warn("Ortam değişkenleri okunamadı, AI özellikleri devre dışı kalabilir.");
   }
-  return ""; 
+  return undefined; 
 };
 
-// Initialize the client safely
-const ai = new GoogleGenAI({ apiKey: getApiKey() });
+// İstemciyi lazy (ihtiyaç duyulduğunda) initialize et
+let aiClient: GoogleGenAI | null = null;
+
+const getAI = () => {
+  if (aiClient) return aiClient;
+  
+  const key = getApiKey();
+  if (!key) {
+    console.warn("Gemini API Key bulunamadı. AI özellikleri çalışmayacak.");
+    return null;
+  }
+  
+  try {
+    aiClient = new GoogleGenAI({ apiKey: key });
+    return aiClient;
+  } catch (e) {
+    console.error("Gemini başlatılamadı:", e);
+    return null;
+  }
+};
 
 const MODEL_TEXT = "gemini-2.5-flash";
 
@@ -33,6 +54,12 @@ export const streamChatResponse = async (
   attachments: Attachment[],
   onChunk: (text: string) => void
 ): Promise<string> => {
+  const ai = getAI();
+  if (!ai) {
+    onChunk("⚠️ Sistem yapılandırması eksik (API Key). Lütfen yönetici ile iletişime geçin.");
+    return "API Key Error";
+  }
+
   try {
     const hasAttachments = attachments.length > 0;
     
@@ -97,7 +124,6 @@ export const streamChatResponse = async (
     }
   } catch (error) {
     console.error("Gemini API Error:", error);
-    // Hata durumunda kullanıcıya bilgi ver ama uygulamayı çökertme
     onChunk("Üzgünüm, şu anda bağlantı kurulamıyor. Lütfen daha sonra tekrar deneyin.");
     return "Hata oluştu.";
   }
@@ -110,6 +136,9 @@ export const analyzePatientComplaint = async (
   complaint: string, 
   images: Attachment[]
 ): Promise<string> => {
+  const ai = getAI();
+  if (!ai) return "AI servisi şu an kullanılamıyor (API Key eksik).";
+
   try {
     const parts: any[] = [];
     
@@ -143,6 +172,9 @@ export const analyzePatientComplaint = async (
  * Yapılan işleme göre yapay zeka analizi ve bakım önerileri getirir.
  */
 export const getTreatmentAnalysis = async (treatment: string, duration: string): Promise<string> => {
+    const ai = getAI();
+    if (!ai) return "Bakım önerileri şu an yüklenemiyor.";
+
     try {
         const response = await ai.models.generateContent({
             model: MODEL_TEXT,
@@ -162,6 +194,9 @@ export const getTreatmentAnalysis = async (treatment: string, duration: string):
  * İşlem hakkında soru-cevap
  */
 export const getTreatmentChatResponse = async (treatment: string, question: string): Promise<string> => {
+    const ai = getAI();
+    if (!ai) return "Sohbet özelliği şu an aktif değil.";
+
     try {
         const response = await ai.models.generateContent({
             model: MODEL_TEXT,

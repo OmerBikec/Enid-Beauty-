@@ -1,6 +1,3 @@
-
-
-
 import { User, Appointment, ChatMessage, ServiceRecord, Payment, Staff } from '../types';
 
 // Mock Data Storage (resets on reload)
@@ -55,13 +52,37 @@ let mockStaff: Staff[] = [
 
 let currentUser: User | null = null;
 
+// Helpers for safe storage access
+const safeSetItem = (key: string, value: string) => {
+    if (typeof window !== 'undefined' && window.localStorage) {
+        window.localStorage.setItem(key, value);
+    }
+};
+
+const safeGetItem = (key: string): string | null => {
+    if (typeof window !== 'undefined' && window.localStorage) {
+        return window.localStorage.getItem(key);
+    }
+    return null;
+};
+
+const safeRemoveItem = (key: string) => {
+    if (typeof window !== 'undefined' && window.localStorage) {
+        window.localStorage.removeItem(key);
+    }
+};
+
 // --- AUTHENTICATION ---
 export const subscribeToAuth = (callback: (user: User | null) => void) => {
     setTimeout(() => {
-        const storedUser = localStorage.getItem('aesthetix_user');
+        const storedUser = safeGetItem('aesthetix_user');
         if (storedUser) {
-            currentUser = JSON.parse(storedUser);
-            callback(currentUser);
+            try {
+                currentUser = JSON.parse(storedUser);
+                callback(currentUser);
+            } catch (e) {
+                callback(null);
+            }
         } else {
             callback(null);
         }
@@ -73,7 +94,7 @@ export const loginUser = async (email: string, pass: string): Promise<{success: 
     const user = mockUsers.find(u => u.email === email || (u.tcNo && `${u.tcNo}@aesthetix.com` === email));
     if (user) {
         currentUser = user;
-        localStorage.setItem('aesthetix_user', JSON.stringify(user));
+        safeSetItem('aesthetix_user', JSON.stringify(user));
         return { success: true, userData: user };
     }
     return { success: false, userData: null, error: "Kullanıcı bulunamadı" };
@@ -93,7 +114,7 @@ export const registerUser = async (email: string, pass: string, data: any): Prom
     };
     mockUsers.push(newUser);
     currentUser = newUser;
-    localStorage.setItem('aesthetix_user', JSON.stringify(newUser));
+    safeSetItem('aesthetix_user', JSON.stringify(newUser));
     return { success: true };
 };
 
@@ -113,13 +134,13 @@ export const registerAdmin = async (email: string, pass: string, data: any): Pro
     };
     mockUsers.push(newUser);
     currentUser = newUser;
-    localStorage.setItem('aesthetix_user', JSON.stringify(newUser));
+    safeSetItem('aesthetix_user', JSON.stringify(newUser));
     return { success: true };
 };
 
 export const logoutUser = async () => {
     currentUser = null;
-    localStorage.removeItem('aesthetix_user');
+    safeRemoveItem('aesthetix_user');
 };
 
 export const getCurrentUser = () => currentUser;
@@ -130,7 +151,7 @@ export const updateUserRole = async (uid: string, role: 'admin' | 'patient') => 
         user.role = role;
         if (currentUser && currentUser.uid === uid) {
             currentUser.role = role;
-            localStorage.setItem('aesthetix_user', JSON.stringify(currentUser));
+            safeSetItem('aesthetix_user', JSON.stringify(currentUser));
         }
     }
 };
