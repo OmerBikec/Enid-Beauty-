@@ -1,0 +1,7 @@
+{
+  "name": "Aesthetix Hair & Anti-Aging",
+  "description": "Saç ekimi, medikal estetik, gençleştirme ve ileri düzey cilt bakımı yönetim platformu.",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}
