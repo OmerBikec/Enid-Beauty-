@@ -1,9 +1,26 @@
-
 import { GoogleGenAI, GenerateContentResponse, Chat } from "@google/genai";
 import { Attachment, Message, MessageRole } from "../types";
 
-// Initialize the client
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+// API Anahtarını güvenli şekilde alma (Tarayıcı çökmesini engeller)
+const getApiKey = () => {
+  try {
+    // Vite/Vercel ortamı için
+    const meta = import.meta as any;
+    if (typeof meta !== 'undefined' && meta.env && meta.env.VITE_API_KEY) {
+      return meta.env.VITE_API_KEY;
+    }
+    // Node ortamı veya process tanımlıysa
+    if (typeof process !== 'undefined' && process.env && process.env.API_KEY) {
+      return process.env.API_KEY;
+    }
+  } catch (e) {
+    console.warn("Ortam değişkenleri okunamadı.");
+  }
+  return ""; 
+};
+
+// Initialize the client safely
+const ai = new GoogleGenAI({ apiKey: getApiKey() });
 
 const MODEL_TEXT = "gemini-2.5-flash";
 
@@ -80,7 +97,9 @@ export const streamChatResponse = async (
     }
   } catch (error) {
     console.error("Gemini API Error:", error);
-    throw error;
+    // Hata durumunda kullanıcıya bilgi ver ama uygulamayı çökertme
+    onChunk("Üzgünüm, şu anda bağlantı kurulamıyor. Lütfen daha sonra tekrar deneyin.");
+    return "Hata oluştu.";
   }
 };
 

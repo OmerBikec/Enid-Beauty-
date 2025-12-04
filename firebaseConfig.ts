@@ -21,20 +21,29 @@ let db: Firestore | undefined;
 
 try {
   // SSR veya sunucu ortamı kontrolü (window undefined ise)
+  // Vercel build sırasında window undefined olabilir, bu yüzden kontrol ediyoruz.
   const isBrowser = typeof window !== 'undefined';
   
   if (isBrowser) {
-      if (!getApps().length && firebaseConfig.apiKey && !firebaseConfig.apiKey.includes("YOUR_API_KEY")) {
+      if (!getApps().length) {
         try {
-            app = initializeApp(firebaseConfig);
-            auth = getAuth(app);
-            db = getFirestore(app);
-            console.log("🔥 Firebase başarıyla bağlandı.");
+            // Eğer config değerleri placeholder ise init etme (çökmemesi için)
+            if (firebaseConfig.apiKey && !firebaseConfig.apiKey.includes("YOUR_API_KEY")) {
+                app = initializeApp(firebaseConfig);
+                auth = getAuth(app);
+                db = getFirestore(app);
+                console.log("🔥 Firebase başarıyla bağlandı.");
+            } else {
+                console.warn("⚠️ Firebase API Key eksik. Demo modu aktif.");
+            }
         } catch (initError) {
              console.error("❌ Firebase init hatası:", initError);
         }
       } else {
-        console.warn("⚠️ Firebase Config eksik. Demo modu aktif.");
+          // Zaten init edilmişse varolanı al
+          app = getApps()[0];
+          auth = getAuth(app);
+          db = getFirestore(app);
       }
   }
 } catch (error) {
